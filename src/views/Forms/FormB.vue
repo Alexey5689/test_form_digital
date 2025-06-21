@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { FormB } from '@/types/type.ts';
-import { useStore } from '@/stores/store';
-const store = useStore();
+import { useFormStore } from '@/stores/formStore';
+import { useMockApi } from '@/composables/mockApiCall';
+const { callMockApi } = useMockApi();
+const store = useFormStore();
 const formData = ref<FormB>({
     lastName: '',
     firstName: '',
@@ -31,6 +33,10 @@ const validatePhone = (phone: string) => {
     return re.test(phone);
 };
 
+const validateBirthDate = (date: string) => {
+    return new Date(date) < new Date();
+};
+
 const validateForm = () => {
     errors.value = {};
     let isValid = true;
@@ -42,6 +48,14 @@ const validateForm = () => {
 
     if (!formData.value.lastName.trim()) {
         errors.value.lastName = 'Фамилия обязательна';
+        isValid = false;
+    }
+
+    if (!formData.value.birthDate) {
+        errors.value.birthDate = 'Дата рождения обязательна';
+        isValid = false;
+    } else if (!validateBirthDate(formData.value.birthDate)) {
+        errors.value.birthDate = 'Дата рождения не может быть в будущем';
         isValid = false;
     }
 
@@ -119,7 +133,7 @@ const submitForm = async (): Promise<void> => {
             phone: formData.value.phone,
         };
 
-        const response = await mockApiCall(dataToSend);
+        const response = await callMockApi(dataToSend, 'B');
 
         if (response.success) {
             submissionResult.value = {
@@ -128,7 +142,7 @@ const submitForm = async (): Promise<void> => {
                 applicationNumber: response.applicationNumber,
                 classifier: response.classifier,
             };
-            store.setApplicationData({
+            store.setApplicationData('B', {
                 applicationNumber: response.applicationNumber,
                 classifier: response.classifier,
             });
@@ -144,33 +158,6 @@ const submitForm = async (): Promise<void> => {
             message: 'Ошибка при отправке формы',
         };
     }
-};
-
-// заглушка для  API
-const mockApiCall = (
-    data: FormB,
-): Promise<{
-    success: boolean;
-    applicationNumber?: string;
-    classifier?: string;
-    error?: string;
-}> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            if (data.email) {
-                resolve({
-                    success: true,
-                    applicationNumber: 'APP-' + Math.floor(Math.random() * 10000),
-                    classifier: 'CLASSIFIER-' + Date.now(),
-                });
-            } else {
-                resolve({
-                    success: false,
-                    error: 'Email обязателен',
-                });
-            }
-        }, 1000);
-    });
 };
 </script>
 
@@ -246,83 +233,3 @@ const mockApiCall = (
         </div>
     </section>
 </template>
-
-<style scoped>
-.section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 50px;
-}
-
-.form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    row-gap: 15px;
-    min-width: 500px;
-    padding: 20px;
-    background-color: #f3f3f3;
-    border-radius: 20px;
-}
-
-.form-group {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-input {
-    width: 100%;
-    height: 50px;
-    border-radius: 15px;
-    padding: 10px 20px;
-    border: 1px solid #ddd;
-}
-
-input.error {
-    border-color: #ff4444;
-}
-
-.error-message {
-    color: #ff4444;
-    font-size: 12px;
-    margin-top: 5px;
-}
-
-button {
-    padding: 12px 24px;
-    border-radius: var(--border-radius-small);
-    transition: var(--transition-duration);
-    cursor: pointer;
-    background-color: var(--color-dark);
-    color: var(--color-accent);
-    border: none;
-    font-weight: bold;
-    margin-top: 10px;
-}
-
-button:hover {
-    background-color: var(--color-accent);
-    color: var(--color-dark);
-}
-
-.submission-result {
-    padding: 10px;
-    border-radius: 5px;
-    margin-top: 15px;
-    text-align: center;
-}
-
-.submission-result.success {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.submission-result.error {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-</style>
